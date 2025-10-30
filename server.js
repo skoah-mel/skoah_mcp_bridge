@@ -9,6 +9,41 @@ app.get("/", (_req, res) => {
   res.send("MCP Bridge running for Skoah!");
 });
 
+
+// 🧾 PRODUCT FEED — this makes a list of products from Shopify
+app.get("/feed", async (_req, res) => {
+  try {
+    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/products.json?limit=250`;
+
+    const response = await fetch(url, {
+      headers: {
+        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const txt = await response.text();
+      return res.status(502).json({ error: "Shopify API error", details: txt });
+    }
+
+    const data = await response.json();
+    const products = (data.products || []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      handle: p.handle,
+      price: p.variants?.[0]?.price || null,
+      image: p.image?.src || null,
+      url: `https://${SHOPIFY_STORE_DOMAIN}/products/${p.handle}`,
+    }));
+
+    res.json({ products });
+  } catch (err) {
+    res.status(500).json({ error: err.toString() });
+  }
+});
+
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
